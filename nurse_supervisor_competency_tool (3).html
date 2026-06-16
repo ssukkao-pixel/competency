@@ -1,0 +1,801 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ระบบประเมินสมรรถนะพยาบาลเวรตรวจการนอกเวลา</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Sarabun', sans-serif; background-color: #f8fafc; color: #334155; }
+        .chart-container { position: relative; width: 100%; height: 350px; }
+        .radio-box:checked + label { background-color: #3b82f6; color: white; border-color: #3b82f6; }
+        .sticky-summary { position: sticky; top: 2rem; }
+        
+        /* Custom Scrollbar */
+        .custom-scrollbar::-webkit-scrollbar { height: 8px; width: 8px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: #f1f1f1; border-radius: 4px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+
+        /* Animations */
+        .fade-in { animation: fadeIn 0.3s ease-out forwards; }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        
+        .toast-enter { animation: slideInRight 0.3s ease-out forwards; }
+        @keyframes slideInRight { from { opacity: 0; transform: translateX(100%); } to { opacity: 1; transform: translateX(0); } }
+    </style>
+</head>
+<body class="antialiased">
+
+    <!-- Header -->
+    <header class="bg-white border-b border-slate-200 py-4 shadow-sm sticky top-0 z-30">
+        <div class="container mx-auto px-4 flex flex-col md:flex-row justify-between items-center gap-4">
+            <div class="flex items-center gap-3">
+                <div class="bg-blue-500 p-2 rounded-lg text-white">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"></path></svg>
+                </div>
+                <div>
+                    <h1 class="text-xl font-bold text-slate-800">Nurse Supervisor Competency</h1>
+                    <p class="text-xs text-slate-500">ระบบประเมินและบริหารจัดการสมรรถนะ</p>
+                </div>
+            </div>
+            <div class="flex flex-wrap justify-center gap-2">
+                <button onclick="window.print()" class="px-3 py-1.5 bg-slate-100 text-slate-700 rounded-md hover:bg-slate-200 transition text-sm flex items-center gap-1 font-medium">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"></path></svg>
+                    พิมพ์
+                </button>
+                <button onclick="confirmReset()" class="px-3 py-1.5 bg-rose-50 text-rose-600 rounded-md hover:bg-rose-100 transition text-sm font-medium">
+                    เริ่มใหม่
+                </button>
+                <button id="saveBtn" onclick="saveData()" class="px-4 py-1.5 bg-emerald-500 text-white rounded-md hover:bg-emerald-600 transition text-sm font-bold shadow-sm opacity-50 cursor-not-allowed flex items-center gap-1">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"></path></svg>
+                    บันทึกข้อมูล
+                </button>
+                <div class="w-px bg-slate-200 mx-1"></div>
+                <button onclick="openAuthModal()" class="px-4 py-1.5 bg-amber-500 text-white rounded-md hover:bg-amber-600 transition text-sm font-bold shadow-sm flex items-center gap-1">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path></svg>
+                    แดชบอร์ดผู้บริหาร
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- MAIN EVALUATION VIEW -->
+    <main id="mainView" class="container mx-auto px-4 py-8 fade-in block">
+        
+        <!-- Info Section -->
+        <section class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 mb-8 relative overflow-hidden">
+            <div class="absolute top-0 left-0 w-2 h-full bg-blue-500"></div>
+            <h2 class="text-lg font-bold text-slate-800 mb-4 flex items-center gap-2">
+                ข้อมูลผู้รับการประเมิน
+            </h2>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div>
+                    <label class="block text-sm font-medium text-slate-600 mb-1">ชื่อ-สกุล</label>
+                    <input type="text" id="nurseName" placeholder="ระบุชื่อ-นามสกุล" class="w-full border border-slate-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-500 outline-none transition text-sm">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-slate-600 mb-1">หน่วยงาน/แผนก</label>
+                    <input type="text" id="department" placeholder="เช่น IPD อายุรกรรม" class="w-full border border-slate-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-500 outline-none transition text-sm">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-slate-600 mb-1">รอบการประเมิน</label>
+                    <select id="evalRound" class="w-full border border-slate-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-500 outline-none transition text-sm bg-white">
+                        <option>ประจำปี</option>
+                        <option>3 เดือน (ทดลองงาน)</option>
+                        <option>6 เดือน</option>
+                        <option>ก่อนปฏิบัติงานจริง</option>
+                    </select>
+                </div>
+            </div>
+        </section>
+
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
+            <!-- Assessment Form -->
+            <div class="lg:col-span-7 space-y-6">
+                <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
+                    <div class="flex justify-between items-center mb-4">
+                        <h2 class="text-lg font-bold text-slate-800">เกณฑ์การประเมิน (10 ด้าน)</h2>
+                        <span class="text-xs font-bold bg-blue-50 text-blue-600 px-3 py-1 rounded-full border border-blue-100">เป้าหมาย: ระดับ 3 ขึ้นไป</span>
+                    </div>
+                    <div id="competencyItems" class="space-y-6">
+                        <!-- Competency Items injected by JS -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- Summary Dashboard -->
+            <div class="lg:col-span-5">
+                <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 sticky-summary">
+                    <h2 class="text-lg font-bold text-slate-800 mb-4 border-b border-slate-100 pb-2">สรุปผลภาพรวม</h2>
+                    
+                    <div class="chart-container mb-4">
+                        <canvas id="competencyChart"></canvas>
+                    </div>
+
+                    <div id="resultSummary" class="space-y-4">
+                        <div class="p-4 bg-slate-50 rounded-xl border border-slate-200 flex justify-between items-center">
+                            <span class="text-slate-600 font-medium">คะแนนเฉลี่ยรวม</span>
+                            <div class="text-right">
+                                <span id="avgScoreDisplay" class="text-3xl font-bold text-blue-600">0.00</span>
+                                <span class="text-sm text-slate-400">/ 5.0</span>
+                            </div>
+                        </div>
+
+                        <div id="gradeBox" class="p-3 rounded-xl text-center font-bold text-base border bg-slate-100 text-slate-400 border-slate-200 transition-colors">
+                            กรุณาประเมินให้ครบถ้วน
+                        </div>
+
+                        <div id="warningArea" class="hidden p-3 bg-rose-50 border border-rose-200 text-rose-700 text-xs rounded-lg flex items-start gap-2">
+                            <svg class="w-4 h-4 mt-0.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
+                            <span><strong>คำเตือน:</strong> สมรรถนะกลุ่มความปลอดภัย (Safety Core) ต่ำกว่าระดับมาตรฐาน (ระดับ 3)</span>
+                        </div>
+                    </div>
+
+                    <div class="mt-6">
+                        <h3 class="font-bold text-slate-800 mb-2 flex items-center gap-2">
+                            <svg class="w-4 h-4 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                            จุดแข็ง (Strengths)
+                        </h3>
+                        <div id="strengthsList" class="text-sm text-slate-600 space-y-1 bg-slate-50 p-3 rounded-lg border border-slate-100">รอการประเมิน...</div>
+                    </div>
+
+                    <div class="mt-6">
+                        <h3 class="font-bold text-slate-800 mb-2 flex items-center gap-2">
+                            <svg class="w-4 h-4 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+                            แผนพัฒนารายบุคคล (IDP)
+                        </h3>
+                        <div id="idpList" class="text-sm text-slate-600 space-y-2">ไม่ต้องจัดทำ IDP</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- EXECUTIVE DASHBOARD VIEW (Hidden by default) -->
+    <main id="dashboardView" class="container mx-auto px-4 py-8 hidden fade-in bg-slate-50 min-h-screen">
+        <div class="flex justify-between items-center mb-8">
+            <div>
+                <h2 class="text-2xl font-bold text-slate-800">Executive Dashboard</h2>
+                <p class="text-sm text-slate-500">ภาพรวมสมรรถนะพยาบาลเวรตรวจการ</p>
+            </div>
+            <button onclick="closeDashboard()" class="px-4 py-2 bg-white border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50 transition text-sm font-medium flex items-center gap-2 shadow-sm">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
+                กลับไปหน้าประเมิน
+            </button>
+        </div>
+
+        <!-- Dashboard KPIs -->
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+            <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 flex justify-between items-center">
+                <div><p class="text-xs text-slate-500 mb-1">บุคลากรที่ประเมินแล้ว</p><p class="text-2xl font-bold text-slate-800" id="dash-total">0 <span class="text-sm font-normal text-slate-500">คน</span></p></div>
+                <div class="w-10 h-10 rounded-full bg-blue-50 flex items-center justify-center text-blue-500"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path></svg></div>
+            </div>
+            <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 flex justify-between items-center">
+                <div><p class="text-xs text-slate-500 mb-1">คะแนนเฉลี่ยองค์กร</p><p class="text-2xl font-bold text-indigo-600" id="dash-avg">0.00</p></div>
+                <div class="w-10 h-10 rounded-full bg-indigo-50 flex items-center justify-center text-indigo-500"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path></svg></div>
+            </div>
+            <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 flex justify-between items-center">
+                <div><p class="text-xs text-slate-500 mb-1">สมรรถนะเด่น</p><p class="text-sm font-bold text-emerald-600 leading-tight" id="dash-str">-</p></div>
+                <div class="w-10 h-10 rounded-full bg-emerald-50 flex items-center justify-center text-emerald-500"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 11l7-7 7 7M5 19l7-7 7 7"></path></svg></div>
+            </div>
+            <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 flex justify-between items-center">
+                <div><p class="text-xs text-slate-500 mb-1">ประเด็นเร่งพัฒนา</p><p class="text-sm font-bold text-rose-600 leading-tight" id="dash-weak">-</p></div>
+                <div class="w-10 h-10 rounded-full bg-rose-50 flex items-center justify-center text-rose-500"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 13l-7 7-7-7m14-8l-7 7-7-7"></path></svg></div>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+            <div class="lg:col-span-2 bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
+                <h3 class="font-bold text-slate-800 mb-4">คะแนนเฉลี่ยจำแนกตามสมรรถนะ 10 ด้าน</h3>
+                <div class="h-64 relative"><canvas id="dashBarChart"></canvas></div>
+            </div>
+            <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
+                <h3 class="font-bold text-slate-800 mb-4">การกระจายตัวเกรดบุคลากร</h3>
+                <div class="h-48 relative"><canvas id="dashDoughnutChart"></canvas></div>
+                <div id="dashGradeLegend" class="mt-4 space-y-1"></div>
+            </div>
+        </div>
+
+        <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+            <div class="p-5 border-b border-slate-200 bg-slate-50 flex justify-between items-center">
+                <h3 class="font-bold text-slate-800">ฐานข้อมูลการประเมิน (คลิกเพื่อดูโปรไฟล์)</h3>
+            </div>
+            <div class="overflow-x-auto custom-scrollbar">
+                <table class="w-full text-left border-collapse text-sm">
+                    <thead>
+                        <tr class="bg-white border-b border-slate-200 text-xs uppercase tracking-wider text-slate-500">
+                            <th class="p-4 font-semibold">ชื่อ-นามสกุล</th>
+                            <th class="p-4 font-semibold">หน่วยงาน</th>
+                            <th class="p-4 font-semibold text-center">คะแนนเฉลี่ย</th>
+                            <th class="p-4 font-semibold">ผลประเมิน</th>
+                            <th class="p-4 font-semibold text-right">จัดการ</th>
+                        </tr>
+                    </thead>
+                    <tbody id="nurseTableBody" class="divide-y divide-slate-100">
+                        <!-- Populated by JS -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </main>
+
+    <!-- Custom Confirm Modal -->
+    <div id="confirmModal" class="fixed inset-0 z-50 hidden items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4">
+        <div class="bg-white rounded-2xl shadow-xl w-full max-w-sm overflow-hidden fade-in">
+            <div id="confirmHeader" class="p-4 bg-rose-50 text-rose-700 font-bold border-b border-rose-100 flex items-center gap-2">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
+                <span id="confirmTitle">ยืนยันการทำรายการ</span>
+            </div>
+            <div class="p-6 text-slate-600 text-sm" id="confirmMessage">คุณแน่ใจหรือไม่?</div>
+            <div class="p-4 bg-slate-50 flex justify-end gap-2 border-t border-slate-100">
+                <button onclick="closeConfirm()" class="px-4 py-2 bg-white border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-100 transition text-sm">ยกเลิก</button>
+                <button id="confirmActionBtn" class="px-4 py-2 bg-rose-500 text-white rounded-lg hover:bg-rose-600 transition text-sm font-bold">ตกลง</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Notification -->
+    <div id="toast" class="fixed bottom-6 right-6 z-50 hidden bg-emerald-500 text-white px-6 py-3 rounded-xl shadow-lg flex items-center gap-3 toast-enter">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+        <span id="toastMsg" class="text-sm font-bold">บันทึกสำเร็จ</span>
+    </div>
+
+    <!-- Auth Modal for Dashboard -->
+    <div id="authModal" class="fixed inset-0 z-50 hidden items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4">
+        <div class="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden fade-in">
+            <div class="p-6 border-b border-slate-100">
+                <h3 class="text-xl font-bold text-slate-800 flex items-center gap-2">
+                    <svg class="w-6 h-6 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path></svg>
+                    ยืนยันตัวตนผู้บริหาร
+                </h3>
+                <p class="text-sm text-slate-500 mt-1">กรุณากรอกชื่อ-นามสกุล เพื่อเข้าดู Dashboard</p>
+            </div>
+            <div class="p-6 space-y-4">
+                <input type="text" id="authName" placeholder="ชื่อ นามสกุล" class="w-full border border-slate-300 rounded-lg px-4 py-3 focus:ring-2 focus:ring-amber-500 outline-none text-base">
+                <p id="authError" class="text-rose-500 text-xs hidden">ไม่พบสิทธิ์การเข้าถึงสำหรับชื่อนี้</p>
+            </div>
+            <div class="p-4 bg-slate-50 flex justify-end gap-2 border-t border-slate-100">
+                <button onclick="closeAuthModal()" class="px-4 py-2 text-slate-600 hover:bg-slate-200 rounded-lg transition text-sm">ยกเลิก</button>
+                <button onclick="verifyAdmin()" class="px-6 py-2 bg-amber-500 text-white rounded-lg hover:bg-amber-600 transition text-sm font-bold shadow">เข้าสู่ระบบ</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Individual Profile Modal (Dashboard Drill-down) -->
+    <div id="individualModal" class="fixed inset-0 z-50 hidden items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4">
+        <div class="bg-white rounded-3xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-y-auto custom-scrollbar flex flex-col fade-in">
+            <div class="flex justify-between items-center p-5 border-b border-slate-100 sticky top-0 bg-white z-10">
+                <h2 class="text-xl font-bold text-slate-800 flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center text-lg" id="modalInitial">N</div>
+                    <div><span id="modalName">ชื่อ</span> <span class="text-sm text-slate-500 font-normal ml-2" id="modalDept">แผนก</span></div>
+                </h2>
+                <button onclick="closeIndividualModal()" class="p-2 text-slate-400 hover:bg-slate-100 rounded-full"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg></button>
+            </div>
+            <div class="p-6 grid grid-cols-1 md:grid-cols-2 gap-6 bg-slate-50">
+                <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-100 text-center">
+                    <h3 class="font-bold text-slate-800 mb-2">กราฟสมรรถนะ</h3>
+                    <div class="h-[250px] relative"><canvas id="modalRadarChart"></canvas></div>
+                </div>
+                <div class="space-y-4">
+                    <div class="flex gap-4">
+                        <div class="bg-white p-4 rounded-2xl shadow-sm border border-slate-100 flex-1 text-center">
+                            <p class="text-xs text-slate-500 mb-1">คะแนนรวม</p><p class="text-2xl font-bold text-blue-600" id="modalScore">0.00</p>
+                        </div>
+                        <div class="bg-white p-4 rounded-2xl shadow-sm border border-slate-100 flex-1 text-center flex flex-col justify-center">
+                            <span id="modalBadge" class="px-3 py-1 rounded-full text-xs font-bold border inline-block mx-auto">เกรด</span>
+                        </div>
+                    </div>
+                    <div class="bg-white p-4 rounded-2xl shadow-sm border border-slate-100">
+                        <h4 class="font-bold text-slate-800 text-sm mb-2">แผนพัฒนา (IDP)</h4>
+                        <div id="modalIDP" class="text-sm space-y-2"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Data Definitions
+        const competencies = [
+            { id: 1, title: "1. ภาวะผู้นำ/การตัดสินใจ", desc: "การกำหนดทิศทาง ตัดสินใจ และสนับสนุนทีมในสถานการณ์นอกเวลา", indicators: [
+                "ไม่สามารถจัดลำดับความสำคัญ ต้องรอคำสั่ง/พึ่งพาผู้อื่น",
+                "จัดลำดับปัญหาได้บ้าง แต่ลังเลในสถานการณ์เร่งด่วน",
+                "ประเมินสถานการณ์ ตัดสินใจได้เหมาะสม สื่อสารทิศทางได้",
+                "นำทีมในวิกฤตซับซ้อนได้อย่างมั่นใจ ตัดสินใจรอบคอบรวดเร็ว",
+                "เป็นผู้นำวิกฤตที่โดดเด่น คาดการณ์ล่วงหน้าและพัฒนาแนวทางได้"
+            ]},
+            { id: 2, title: "2. บริหารอัตรากำลัง/ทรัพยากร", desc: "การจัดสรรคนและอุปกรณ์ให้สอดคล้องกับภาระงานและความรุนแรงโรค", indicators: [
+                "ประเมินอัตรากำลังไม่ได้ ทำให้การแก้ไขปัญหาล่าช้า",
+                "ประเมินได้บางส่วน แต่ไม่เชื่อมโยงกับภาระงานและความรุนแรง",
+                "ประเมินเหมาะสม ประสานเวรเสริม/ยืมอุปกรณ์ได้ทันเวลา",
+                "วิเคราะห์แนวโน้มล่วงหน้า วางแผนสำรองได้ดีเยี่ยม",
+                "พัฒนาระบบบริหารทรัพยากรเชิงรุก ลดอุบัติการณ์ขาดแคลน"
+            ]},
+            { id: 3, title: "3. ประเมินผู้ป่วยเสี่ยงสูง (Safety)", desc: "การค้นหา ติดตามผู้ป่วยวิกฤต (Sepsis, STEMI, Stroke ฯลฯ)", indicators: [
+                "ระบุผู้ป่วยเสี่ยงสูงไม่ได้ หรือรายงานประสานงานล่าช้า",
+                "ระบุได้บางกลุ่ม แต่วิเคราะห์ความเร่งด่วนไม่แม่นยำ",
+                "ประเมิน/ประสานทีมทันเวลาตามเกณฑ์ EWS/NEWS 2.0",
+                "วิเคราะห์เคสซับซ้อนเชิงระบบ ช่วยทีมวางแผนป้องกันทรุดลง",
+                "เป็นที่ปรึกษาด้านคลินิก พัฒนาระบบติดตามระดับโรงพยาบาล"
+            ]},
+            { id: 4, title: "4. จัดการความปลอดภัย (Safety)", desc: "การเฝ้าระวัง ป้องกัน ความเสี่ยง (Fall, Med Error, Identify)", indicators: [
+                "ระบุความเสี่ยงไม่ได้ หรือไม่ดำเนินการแก้ไขเมื่อพบปัญหา",
+                "ระบุได้บางประเด็น แต่ขาดการติดตามเพื่อป้องกันเกิดซ้ำ",
+                "จัดการความเสี่ยงสำคัญครบถ้วนตาม Patient Safety Goals",
+                "ทำ RCA อุบัติการณ์ซ้ำ เสนอแนวทางป้องกันเชิงระบบได้",
+                "สร้างวัฒนธรรมความปลอดภัย นำนวัตกรรมมาใช้ป้องกัน"
+            ]},
+            { id: 5, title: "5. สื่อสาร/ประสานงาน (Safety)", desc: "การส่งข้อมูลผ่าน SBAR และประสานงานทีมสหสาขาวิชาชีพ", indicators: [
+                "สื่อสารไม่ชัดเจน ข้อมูลขาดหาย เกิดความเข้าใจผิด",
+                "สื่อสารพื้นฐานได้ แต่สรุปประเด็นเพื่อการตัดสินใจไม่ได้",
+                "ใช้ SBAR สื่อสารครบถ้วน ชัดเจน ทันเวลา ราบรื่น",
+                "ประสานงานเคสซับซ้อน/ขัดแย้งได้ดี ทำให้ทีมตัดสินใจร่วมกันได้",
+                "เป็นต้นแบบสื่อสารวิกฤต พัฒนาช่องทางการประสานงานใหม่"
+            ]},
+            { id: 6, title: "6. นิเทศ/ให้คำปรึกษา", desc: "การเป็นที่ปรึกษา ช่วยเหลือหัวหน้าเวรและพยาบาลหน้างาน", indicators: [
+                "ให้คำแนะนำไม่ได้ หรือคำแนะนำไม่ตรงตามมาตรฐาน",
+                "แนะนำเรื่องทั่วไปได้ แต่ไม่ครอบคลุมเคสซับซ้อน",
+                "นิเทศ/สนับสนุนทีมได้เหมาะสม ช่วยแก้ปัญหาหน้างานได้จริง",
+                "เป็นพี่เลี้ยง (Mentor) ชั้นเยี่ยม ถ่ายทอดการคิดเชิงระบบได้",
+                "สร้างระบบ Coaching และ Mentoring ให้หน่วยงานยั่งยืน"
+            ]},
+            { id: 7, title: "7. จัดการข้อร้องเรียน", desc: "การรับฟัง เจรจา ลดความขัดแย้งกับผู้ป่วย/ญาติ", indicators: [
+                "รับมือความขัดแย้งไม่ได้ ทำให้สถานการณ์รุนแรงขึ้น",
+                "รับฟังเบื้องต้นได้ แต่ยังขาดทักษะเจรจาลดความตึงเครียด",
+                "จัดการข้อร้องเรียนเบื้องต้นสุภาพ แก้ปัญหาเฉพาะหน้าได้",
+                "เจรจาเคสซับซ้อนยุติได้ดี สร้างความมั่นใจกลับคืนมา",
+                "วิเคราะห์แนวโน้มข้อร้องเรียน วางแผนป้องกันเชิงรุก"
+            ]},
+            { id: 8, title: "8. จริยธรรม/มาตรฐานวิชาชีพ", desc: "การยึดหลักสิทธิผู้ป่วย กฎหมาย และระเบียบโรงพยาบาล", indicators: [
+                "ขาดความเข้าใจสิทธิ/จริยธรรม เสี่ยงต่อปัญหาฟ้องร้อง",
+                "เข้าใจทั่วไป แต่ต้องอาศัยคำแนะนำเมื่อเจอเคสซับซ้อน",
+                "ปฏิบัติตามมาตรฐานวิชาชีพและกฎหมายได้อย่างถูกต้อง",
+                "วิเคราะห์ประเด็นจริยธรรมซับซ้อน พิทักษ์สิทธิผู้ป่วยได้ดี",
+                "เป็นที่ปรึกษาด้านจริยธรรม พัฒนาแนวทางที่โปร่งใส"
+            ]},
+            { id: 9, title: "9. บริหารเหตุฉุกเฉิน (Safety)", desc: "การจัดการอุบัติเหตุหมู่ ภัยพิบัติ ระบบสนับสนุนขัดข้อง", indicators: [
+                "ไม่ทราบแผนฉุกเฉิน ตื่นตระหนก ประสานงานไม่ได้",
+                "ทำตามแผนได้บางส่วน แต่สั่งการไม่คล่องตัว",
+                "ร่วมบริหารเหตุฉุกเฉิน สั่งการและรายงานผลได้ตามระบบ",
+                "นำทีมตอบโต้วิกฤตยอดเยี่ยม ประสานหลายหน่วยงานราบรื่น",
+                "วิเคราะห์จุดอ่อนจาก Drill นำมาพัฒนาระบบรับมือระดับสูง"
+            ]},
+            { id: 10, title: "10. รายงาน/วิเคราะห์ข้อมูล", desc: "การบันทึกรายงานเวร วิเคราะห์ปัญหา และทำ Quality Improvement", indicators: [
+                "บันทึกไม่ครบถ้วน หรือไม่รายงานเหตุการณ์สำคัญ",
+                "บันทึกพื้นฐานได้ แต่ขาดการวิเคราะห์และข้อเสนอแนะ",
+                "รายงานครบถ้วน ระบุปัญหาและการแก้ไขได้ชัดเจน",
+                "วิเคราะห์แนวโน้ม เสนอประเด็นทำ CQI เชื่อมโยง KPI ได้",
+                "ใช้ Data Analytics ขับเคลื่อนการพัฒนาระบบพยาบาล"
+            ]}
+        ];
+
+        const idpMethods = [
+            "เข้าโปรแกรม Simulation วิกฤต / สังเกตงานกับหัวหน้าเวรอาวุโส",
+            "ทบทวนเกณฑ์การคำนวณภาระงาน (Acuity) และฝึกบริหารทรัพยากร",
+            "ทบทวน EWS/NEWS 2.0 / เข้าร่วม Case Conference อาการทรุดลง",
+            "ฝึกทำ RCA อุบัติการณ์ / เฝ้าระวัง Patient Safety Goals เชิงรุก",
+            "Role Play การรายงาน SBAR / ฝึกการประสานงานกรณีขัดแย้ง",
+            "อบรมหลักสูตร Clinical Coaching และนิเทศหน้างาน",
+            "อบรมทักษะเจรจาไกล่เกลี่ย และการจัดการข้อร้องเรียน",
+            "ทบทวน พ.ร.บ. วิชาชีพ และเคสตัวอย่างด้านสิทธิผู้ป่วย",
+            "ร่วมฝึกซ้อมแผนฉุกเฉิน (Drill) และแผนรับมือระบบสนับสนุนขัดข้อง",
+            "ฝึกวิเคราะห์ข้อมูลจากรายงานเวรเพื่อเขียนโครงการพัฒนา (CQI)"
+        ];
+
+        const authorizedAdmins = ["สุจิตรา แจ่มกระจาย", "สุขุมาภรณ์ สุขเก่า", "สุคนธ์จิต อุปนันชัย", "อรุณี ทองดี", "สุภาภรณ์ สังขดิถี", "วนิดา ว่องทรง", "อัฏฐพร ถาวรกุล"];
+
+        // State Variables
+        let scores = new Array(10).fill(0);
+        let myChart;
+        let nursesDb = JSON.parse(localStorage.getItem('nursesCompetencyDb')) || [];
+
+        // Global Chart instances for dashboard
+        let dashBarChart, dashDoughnutChart, individualRadarChart;
+        let pendingDeleteId = null;
+        let confirmCallback = null;
+
+        document.addEventListener('DOMContentLoaded', () => {
+            initApp();
+        });
+
+        function initApp() {
+            const container = document.getElementById('competencyItems');
+            container.innerHTML = '';
+            
+            competencies.forEach((comp, idx) => {
+                const isSafety = [2, 3, 4, 8].includes(idx);
+                const safetyBadge = isSafety ? `<span class="ml-2 text-[10px] bg-rose-100 text-rose-700 px-1.5 py-0.5 rounded border border-rose-200">Safety Core</span>` : '';
+                
+                const div = document.createElement('div');
+                div.className = 'group transition-all duration-300 border-l-4 border-slate-200 hover:border-blue-400 pl-4 py-2';
+                div.innerHTML = `
+                    <div class="mb-2">
+                        <h3 class="font-bold text-slate-800">${comp.title} ${safetyBadge}</h3>
+                        <p class="text-slate-500 text-xs italic mb-3">${comp.desc}</p>
+                        <div class="grid grid-cols-5 gap-1.5">
+                            ${comp.indicators.map((text, i) => `
+                                <div class="relative">
+                                    <input type="radio" name="comp-${idx}" id="c-${idx}-${i+1}" value="${i+1}" 
+                                        onchange="updateScore(${idx}, ${i+1})" class="hidden radio-box">
+                                    <label for="c-${idx}-${i+1}" class="block text-center py-1.5 px-1 bg-slate-50 border border-slate-200 rounded-lg text-xs font-bold cursor-pointer hover:bg-blue-50 transition-colors">
+                                        LV ${i+1}
+                                    </label>
+                                </div>
+                            `).join('')}
+                        </div>
+                        <div id="feedback-${idx}" class="mt-2 p-2.5 bg-slate-50 rounded-lg text-slate-600 text-xs leading-relaxed border border-dashed border-slate-200 transition-colors duration-300">
+                            👈 เลือกคะแนนเพื่อดูพฤติกรรมบ่งชี้
+                        </div>
+                    </div>
+                `;
+                container.appendChild(div);
+            });
+            initChart();
+        }
+
+        function updateScore(idx, score) {
+            scores[idx] = score;
+            const feedback = document.getElementById(`feedback-${idx}`);
+            feedback.innerHTML = `<strong class="text-blue-700">ระดับ ${score}:</strong> ${competencies[idx].indicators[score-1]}`;
+            feedback.classList.remove('bg-slate-50', 'border-slate-200');
+            feedback.classList.add('bg-blue-50', 'border-blue-200');
+            calculateResults();
+        }
+
+        function calculateResults() {
+            const count = scores.filter(s => s > 0).length;
+            const sum = scores.reduce((a, b) => a + b, 0);
+            const avg = count > 0 ? (sum / 10).toFixed(2) : 0;
+
+            // Save Button Logic
+            const saveBtn = document.getElementById('saveBtn');
+            const nameInput = document.getElementById('nurseName').value.trim();
+            if (count === 10 && nameInput !== "") {
+                saveBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+            } else {
+                saveBtn.classList.add('opacity-50', 'cursor-not-allowed');
+            }
+
+            // Update UI
+            document.getElementById('avgScoreDisplay').innerText = avg;
+            const gradeBox = document.getElementById('gradeBox');
+            
+            let gradeText = ""; let gradeClass = "";
+            if (count < 10) { gradeText = "กำลังประเมิน..."; gradeClass = "bg-slate-100 text-slate-500 border-slate-200"; }
+            else if (avg >= 4.5) { gradeText = "ดีเยี่ยม (เป็นแบบอย่าง)"; gradeClass = "bg-emerald-100 text-emerald-800 border-emerald-200"; }
+            else if (avg >= 3.5) { gradeText = "ชำนาญการ"; gradeClass = "bg-blue-100 text-blue-800 border-blue-200"; }
+            else if (avg >= 3.0) { gradeText = "ผ่านเกณฑ์มาตรฐาน"; gradeClass = "bg-indigo-100 text-indigo-800 border-indigo-200"; }
+            else if (avg >= 2.5) { gradeText = "กำลังพัฒนา (ทำ IDP)"; gradeClass = "bg-amber-100 text-amber-800 border-amber-200"; }
+            else { gradeText = "ต้องปรับปรุงด่วน (มีพี่เลี้ยง)"; gradeClass = "bg-rose-100 text-rose-800 border-rose-200"; }
+
+            gradeBox.className = `p-3 rounded-xl text-center font-bold text-base border transition-colors ${gradeClass}`;
+            gradeBox.innerText = gradeText;
+
+            // Check Safety Competencies
+            const safetyIssues = [2, 3, 4, 8].some(i => scores[i] > 0 && scores[i] < 3);
+            document.getElementById('warningArea').classList.toggle('hidden', !safetyIssues);
+
+            updateSummaryLists();
+            updateChart();
+        }
+
+        function updateSummaryLists() {
+            const strengths = []; const idps = [];
+            scores.forEach((s, i) => { 
+                if(s >= 4) strengths.push(competencies[i].title); 
+                if(s > 0 && s < 3) idps.push({title: competencies[i].title, method: idpMethods[i]});
+            });
+
+            document.getElementById('strengthsList').innerHTML = strengths.length 
+                ? strengths.map(t => `<div class="flex items-center gap-2"><svg class="w-3 h-3 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>${t}</div>`).join('') 
+                : "<span class="+"text-slate-400"+">ยังไม่พบสมรรถนะเด่นระดับ 4-5</span>";
+
+            document.getElementById('idpList').innerHTML = idps.length 
+                ? idps.map(obj => `
+                    <div class="p-2.5 bg-rose-50 rounded-lg border border-rose-100 text-xs">
+                        <strong class="text-rose-700 block mb-1">${obj.title}</strong>
+                        <span class="text-slate-600"><strong>แนะนำ:</strong> ${obj.method}</span>
+                    </div>`).join('') 
+                : (scores.filter(s=>s>0).length === 10 ? "<span class='text-emerald-600 font-bold'>ผ่านเกณฑ์มาตรฐานทุกด้าน ไม่ต้องจัดทำ IDP</span>" : "รอการประเมิน...");
+        }
+
+        function initChart() {
+            const ctx = document.getElementById('competencyChart').getContext('2d');
+            myChart = new Chart(ctx, {
+                type: 'radar',
+                data: {
+                    labels: ['ภาวะผู้นำ', 'ทรัพยากร', 'ประเมินคลินิก', 'จัดการความเสี่ยง', 'สื่อสาร', 'นิเทศ', 'ร้องเรียน', 'จริยธรรม', 'เหตุฉุกเฉิน', 'วิเคราะห์ข้อมูล'],
+                    datasets: [{
+                        label: 'คะแนน',
+                        data: scores,
+                        backgroundColor: 'rgba(59, 130, 246, 0.2)', borderColor: '#3b82f6', borderWidth: 2, pointBackgroundColor: '#3b82f6'
+                    }, {
+                        label: 'เป้าหมาย',
+                        data: new Array(10).fill(3),
+                        borderColor: '#94a3b8', borderWidth: 1, borderDash: [4, 4], pointRadius: 0, fill: false
+                    }]
+                },
+                options: { maintainAspectRatio: false, scales: { r: { min: 0, max: 5, ticks: { display: false } } }, plugins: { legend: { position: 'bottom', labels:{font:{size:10}} } } }
+            });
+        }
+        function updateChart() { myChart.data.datasets[0].data = scores; myChart.update(); }
+
+        // Core Functions
+        function saveData() {
+            const count = scores.filter(s => s > 0).length;
+            const name = document.getElementById('nurseName').value.trim();
+            const dept = document.getElementById('department').value.trim() || 'ไม่ระบุ';
+            const round = document.getElementById('evalRound').value;
+
+            if (count < 10) return showConfirm("ข้อมูลไม่ครบ", "กรุณาประเมินให้ครบทั้ง 10 ด้านก่อนบันทึก", "danger", null);
+            if (name === "") return showConfirm("ข้อมูลไม่ครบ", "กรุณาระบุชื่อ-นามสกุลของผู้รับการประเมิน", "danger", null);
+
+            const sum = scores.reduce((a, b) => a + b, 0);
+            const avg = (sum / 10).toFixed(2);
+            let grade = ""; let color = "";
+            if (avg >= 4.5) { grade = 'ดีเยี่ยม'; color = 'bg-emerald-100 text-emerald-800 border-emerald-200'; }
+            else if (avg >= 3.5) { grade = 'ชำนาญการ'; color = 'bg-blue-100 text-blue-800 border-blue-200'; }
+            else if (avg >= 3.0) { grade = 'ผ่านเกณฑ์'; color = 'bg-indigo-100 text-indigo-800 border-indigo-200'; }
+            else if (avg >= 2.5) { grade = 'กำลังพัฒนา'; color = 'bg-amber-100 text-amber-800 border-amber-200'; }
+            else { grade = 'ปรับปรุงด่วน'; color = 'bg-rose-100 text-rose-800 border-rose-200'; }
+
+            const newRecord = {
+                id: Date.now(), name, dept, round, avg, grade, color,
+                scores: [...scores], date: new Date().toISOString()
+            };
+
+            const existingIndex = nursesDb.findIndex(n => n.name === name);
+            if (existingIndex > -1) {
+                showConfirm("พบชื่อซ้ำในระบบ", `มีประวัติการประเมินของ "${name}" อยู่แล้ว ต้องการบันทึกทับข้อมูลเดิมหรือไม่?`, "warning", () => {
+                    nursesDb[existingIndex] = newRecord;
+                    saveToStorage();
+                });
+            } else {
+                nursesDb.push(newRecord);
+                saveToStorage();
+            }
+        }
+
+        function saveToStorage() {
+            localStorage.setItem('nursesCompetencyDb', JSON.stringify(nursesDb));
+            showToast("บันทึกข้อมูลเรียบร้อยแล้ว");
+        }
+
+        function confirmReset() {
+            showConfirm("เริ่มใหม่", "ต้องการล้างฟอร์มการประเมินทั้งหมดใช่หรือไม่?", "danger", () => {
+                // เคลียร์ข้อมูลในช่องกรอกข้อความ
+                document.getElementById('nurseName').value = '';
+                document.getElementById('department').value = '';
+                document.getElementById('evalRound').selectedIndex = 0;
+
+                // รีเซ็ตอาร์เรย์เก็บคะแนน
+                scores = new Array(10).fill(0);
+
+                // เอาเครื่องหมายถูกออกจาก Radio Buttons ทั้งหมด
+                document.querySelectorAll('.radio-box').forEach(radio => radio.checked = false);
+
+                // คืนค่ากล่องข้อความอธิบายพฤติกรรมให้เป็นค่าเริ่มต้น
+                for(let idx = 0; idx < 10; idx++) {
+                    const feedback = document.getElementById(`feedback-${idx}`);
+                    if(feedback) {
+                        feedback.innerHTML = '👈 เลือกคะแนนเพื่อดูพฤติกรรมบ่งชี้';
+                        feedback.classList.remove('bg-blue-50', 'border-blue-200');
+                        feedback.classList.add('bg-slate-50', 'border-slate-200');
+                    }
+                }
+
+                // สั่งคำนวณใหม่เพื่อล้างกราฟ Radar และผลสรุปคะแนน
+                calculateResults();
+                showToast("ล้างข้อมูลในแบบฟอร์มเรียบร้อยแล้ว");
+            });
+        }
+
+        // --- DASHBOARD LOGIC ---
+        function openAuthModal() { document.getElementById('authModal').classList.remove('hidden'); document.getElementById('authModal').classList.add('flex'); document.getElementById('authError').classList.add('hidden'); document.getElementById('authName').value = ''; }
+        function closeAuthModal() { document.getElementById('authModal').classList.add('hidden'); document.getElementById('authModal').classList.remove('flex'); }
+        
+        function verifyAdmin() {
+            const input = document.getElementById('authName').value.replace(/\s+/g, ' ').trim(); // Normalize spaces
+            const isMatch = authorizedAdmins.some(admin => admin === input);
+            if(isMatch || input === "admin") { // hidden backdoor for testing
+                closeAuthModal();
+                openDashboard();
+            } else {
+                document.getElementById('authError').classList.remove('hidden');
+            }
+        }
+
+        function openDashboard() {
+            document.getElementById('mainView').classList.add('hidden');
+            document.getElementById('dashboardView').classList.remove('hidden');
+            initDashboard();
+        }
+
+        function closeDashboard() {
+            document.getElementById('dashboardView').classList.add('hidden');
+            document.getElementById('mainView').classList.remove('hidden');
+        }
+
+        function initDashboard() {
+            document.getElementById('dash-total').innerHTML = `${nursesDb.length} <span class="text-sm font-normal text-slate-500">คน</span>`;
+            if (nursesDb.length === 0) {
+                document.getElementById('dash-avg').innerText = "0.00";
+                renderTable(); return;
+            }
+
+            let deptSumAvg = 0;
+            let totalScores = new Array(10).fill(0);
+            let gradeCounts = { 'ดีเยี่ยม': 0, 'ชำนาญการ': 0, 'ผ่านเกณฑ์': 0, 'กำลังพัฒนา': 0, 'ปรับปรุงด่วน': 0 };
+
+            nursesDb.forEach(nurse => {
+                deptSumAvg += parseFloat(nurse.avg);
+                nurse.scores.forEach((s, i) => totalScores[i] += s);
+                if (gradeCounts[nurse.grade] !== undefined) gradeCounts[nurse.grade]++;
+            });
+
+            const overallAvg = (deptSumAvg / nursesDb.length).toFixed(2);
+            const avgPerCompetency = totalScores.map(val => (val / nursesDb.length).toFixed(2));
+            
+            document.getElementById('dash-avg').innerText = overallAvg;
+
+            let maxAvg = Math.max(...avgPerCompetency); let minAvg = Math.min(...avgPerCompetency);
+            document.getElementById('dash-str').innerText = competencies[avgPerCompetency.indexOf(maxAvg.toFixed(2))].title.replace(/^\d+\.\s*/, '');
+            document.getElementById('dash-weak').innerText = competencies[avgPerCompetency.indexOf(minAvg.toFixed(2))].title.replace(/^\d+\.\s*/, '');
+
+            renderDashCharts(avgPerCompetency, Object.values(gradeCounts), Object.keys(gradeCounts));
+            renderTable();
+        }
+
+        function renderTable() {
+            const tbody = document.getElementById('nurseTableBody');
+            tbody.innerHTML = '';
+            if (nursesDb.length === 0) {
+                 tbody.innerHTML = `<tr><td colspan="5" class="p-4 text-center text-slate-500">ยังไม่มีข้อมูลในระบบ</td></tr>`;
+            } else {
+                nursesDb.forEach(nurse => {
+                    tbody.innerHTML += `
+                        <tr class="hover:bg-slate-50 transition cursor-pointer" onclick="openIndividualModal(${nurse.id})">
+                            <td class="p-4 font-medium text-slate-800">${nurse.name}</td>
+                            <td class="p-4 text-slate-500">${nurse.dept}</td>
+                            <td class="p-4 text-center font-bold text-slate-700">${nurse.avg}</td>
+                            <td class="p-4"><span class="px-3 py-1 rounded-full text-xs font-bold border ${nurse.color}">${nurse.grade}</span></td>
+                            <td class="p-4 text-right flex justify-end gap-2">
+                                <button onclick="event.stopPropagation(); openIndividualModal(${nurse.id})" class="text-indigo-600 hover:text-indigo-800 text-xs font-bold bg-indigo-50 hover:bg-indigo-100 px-3 py-1.5 rounded transition">ดูโปรไฟล์</button>
+                                <button onclick="event.stopPropagation(); deleteNurseData(${nurse.id}, '${nurse.name}')" class="text-rose-600 hover:text-rose-800 text-xs font-bold bg-rose-50 hover:bg-rose-100 px-3 py-1.5 rounded transition flex items-center gap-1">
+                                    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                                </button>
+                            </td>
+                        </tr>
+                    `;
+                });
+            }
+        }
+
+        function deleteNurseData(id, name) {
+            showConfirm(
+                "ลบข้อมูล", 
+                `คุณต้องการลบข้อมูลประเมินของ "${name}" ใช่หรือไม่?`, 
+                "danger", 
+                () => {
+                    nursesDb = nursesDb.filter(n => n.id !== id);
+                    localStorage.setItem('nursesCompetencyDb', JSON.stringify(nursesDb));
+                    showToast(`ลบข้อมูลของ ${name} เรียบร้อยแล้ว`);
+                    initDashboard(); 
+                }
+            );
+        }
+
+        function renderDashCharts(avgData, gradeData, gradeLabels) {
+            Chart.defaults.font.family = "'Sarabun', sans-serif";
+            
+            if(dashBarChart) dashBarChart.destroy();
+            dashBarChart = new Chart(document.getElementById('dashBarChart').getContext('2d'), {
+                type: 'bar',
+                data: {
+                    labels: competencies.map(c => c.title.replace(/^\d+\.\s*/, '')),
+                    datasets: [
+                        { label: 'ค่าเฉลี่ย', data: avgData, backgroundColor: '#6366f1', borderRadius: 4 },
+                        { type: 'line', label: 'เป้าหมาย', data: new Array(10).fill(3), borderColor: '#f59e0b', borderWidth: 2, borderDash:[4,4], pointRadius: 0, fill: false }
+                    ]
+                },
+                options: { responsive: true, maintainAspectRatio: false, indexAxis: 'y', scales: { x: { min: 0, max: 5 } }, plugins: { legend: { position: 'bottom', labels:{boxWidth:12, font:{size:10}} } } }
+            });
+
+            if(dashDoughnutChart) dashDoughnutChart.destroy();
+            const colors = ['#10b981', '#3b82f6', '#6366f1', '#f59e0b', '#f43f5e'];
+            dashDoughnutChart = new Chart(document.getElementById('dashDoughnutChart').getContext('2d'), {
+                type: 'doughnut',
+                data: { labels: gradeLabels, datasets: [{ data: gradeData, backgroundColor: colors, borderWidth: 1 }] },
+                options: { responsive: true, maintainAspectRatio: false, cutout: '70%', plugins: { legend: { display: false } } }
+            });
+
+            let legendHtml = '';
+            gradeLabels.forEach((lbl, i) => {
+                if(gradeData[i] > 0) legendHtml += `<div class="flex justify-between text-xs"><span class="flex items-center gap-1"><div class="w-2 h-2 rounded-full" style="background:${colors[i]}"></div>${lbl}</span><span class="font-bold">${gradeData[i]} คน</span></div>`;
+            });
+            document.getElementById('dashGradeLegend').innerHTML = legendHtml;
+        }
+
+        // --- INDIVIDUAL MODAL LOGIC ---
+        function openIndividualModal(id) {
+            const nurse = nursesDb.find(n => n.id === id);
+            if(!nurse) return;
+
+            document.getElementById('modalInitial').innerText = nurse.name.charAt(0);
+            document.getElementById('modalName').innerText = nurse.name;
+            document.getElementById('modalDept').innerText = nurse.dept;
+            document.getElementById('modalScore').innerText = nurse.avg;
+            document.getElementById('modalBadge').className = `px-3 py-1 rounded-full text-xs font-bold border inline-block mx-auto ${nurse.color}`;
+            document.getElementById('modalBadge').innerText = nurse.grade;
+
+            let idpHtml = '';
+            nurse.scores.forEach((s, i) => {
+                if(s > 0 && s < 3) {
+                    idpHtml += `<div class="p-2 bg-rose-50 rounded border border-rose-100 mb-2"><strong class="text-rose-700 block">${competencies[i].title} (LV ${s})</strong><span class="text-slate-600">${idpMethods[i]}</span></div>`;
+                }
+            });
+            document.getElementById('modalIDP').innerHTML = idpHtml || '<div class="text-emerald-600 font-bold p-3 bg-emerald-50 rounded text-center">ผ่านเกณฑ์ทุกด้าน</div>';
+
+            if(individualRadarChart) individualRadarChart.destroy();
+            individualRadarChart = new Chart(document.getElementById('modalRadarChart').getContext('2d'), {
+                type: 'radar',
+                data: {
+                    labels: ['1', '2', '3', '4', '5', '6', '7', '8', '9', '10'],
+                    datasets: [
+                        { label: 'คะแนน', data: nurse.scores, backgroundColor: 'rgba(59, 130, 246, 0.2)', borderColor: '#3b82f6', borderWidth: 2, pointBackgroundColor: '#3b82f6' },
+                        { label: 'เป้าหมาย', data: new Array(10).fill(3), borderColor: '#94a3b8', borderWidth: 1, borderDash:[4,4], pointRadius:0, fill:false }
+                    ]
+                },
+                options: { responsive:true, maintainAspectRatio:false, scales:{ r:{min:0, max:5, ticks:{display:false}} } }
+            });
+
+            document.getElementById('individualModal').classList.remove('hidden'); document.getElementById('individualModal').classList.add('flex');
+        }
+        function closeIndividualModal() { document.getElementById('individualModal').classList.add('hidden'); document.getElementById('individualModal').classList.remove('flex'); }
+
+        // --- UI HELPERS (No alerts allowed) ---
+        function showToast(msg) {
+            const toast = document.getElementById('toast');
+            document.getElementById('toastMsg').innerText = msg;
+            toast.classList.remove('hidden');
+            setTimeout(() => { toast.classList.add('hidden'); }, 3000);
+        }
+
+        function showConfirm(title, message, type, callback) {
+            document.getElementById('confirmTitle').innerText = title;
+            document.getElementById('confirmMessage').innerText = message;
+            
+            const header = document.getElementById('confirmHeader');
+            const btn = document.getElementById('confirmActionBtn');
+            
+            if (type === 'danger') {
+                header.className = 'p-4 bg-rose-50 text-rose-700 font-bold border-b border-rose-100 flex items-center gap-2';
+                btn.className = 'px-4 py-2 bg-rose-500 text-white rounded-lg hover:bg-rose-600 transition text-sm font-bold';
+            } else if (type === 'warning') {
+                header.className = 'p-4 bg-amber-50 text-amber-700 font-bold border-b border-amber-100 flex items-center gap-2';
+                btn.className = 'px-4 py-2 bg-amber-500 text-white rounded-lg hover:bg-amber-600 transition text-sm font-bold';
+            }
+
+            confirmCallback = callback;
+            document.getElementById('confirmModal').classList.remove('hidden');
+            document.getElementById('confirmModal').classList.add('flex');
+
+            btn.onclick = () => {
+                const cb = confirmCallback; // เก็บคำสั่งไว้ก่อน
+                closeConfirm(); // ปิดหน้าต่าง (ซึ่งจะล้างค่า confirmCallback)
+                if (cb) cb(); // รันคำสั่งที่เก็บไว้ (เช่น ล้างฟอร์ม หรือ ลบข้อมูล)
+            };
+        }
+
+        function closeConfirm() {
+            document.getElementById('confirmModal').classList.add('hidden');
+            document.getElementById('confirmModal').classList.remove('flex');
+            confirmCallback = null;
+        }
+        
+    </script>
+</body>
+</html>
